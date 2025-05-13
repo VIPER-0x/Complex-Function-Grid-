@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Interactive Complex Function Grid</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 10px;
+  }
+  .inputs {
+    margin-bottom: 15px;
+  }
+  input[type="number"] {
+    width: 70px;
+  }
+  canvas {
+    border: 1px solid black;
+    background: white;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Complex Function Grid for f(z) = 1/(z + a) + 1/(z - b)</h2>
+
+<div class="inputs">
+  <label>a = 
+    <input id="aRe" type="number" step="0.1" value="-1.3" /> +
+    <input id="aIm" type="number" step="0.1" value="0" />i
+  </label>
+  &nbsp;&nbsp;&nbsp;
+  <label>b = 
+    <input id="bRe" type="number" step="0.1" value="1.6" /> +
+    <input id="bIm" type="number" step="0.1" value="0" />i
+  </label>
+  &nbsp;&nbsp;&nbsp;
+  <button id="drawBtn">Draw</button>
+</div>
+
+<canvas id="complexCanvas" width="600" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('complexCanvas');
+const ctx = canvas.getContext('2d');
+
+const W = canvas.width;
+const H = canvas.height;
+
+// Set origin center & flip y axis for math coords
+ctx.translate(W/2, H/2);
+ctx.scale(1, -1);
+
+const scale = 70;
+
+// Inputs
+const aReInput = document.getElementById('aRe');
+const aImInput = document.getElementById('aIm');
+const bReInput = document.getElementById('bRe');
+const bImInput = document.getElementById('bIm');
+const drawBtn = document.getElementById('drawBtn');
+
+// Complex arithmetic helper functions
+function complexInv(z) {
+  const denom = z.re*z.re + z.im*z.im;
+  return { re: z.re / denom, im: -z.im / denom };
+}
+
+function complexAdd(a, b) {
+  return { re: a.re + b.re, im: a.im + b.im };
+}
+
+// f(z) = 1/(z + a) + 1/(z - b)
+function f_complex(z, a, b) {
+  const inv1 = complexInv({ re: z.re + a.re, im: z.im + a.im });
+  const inv2 = complexInv({ re: z.re - b.re, im: z.im - b.im });
+  return complexAdd(inv1, inv2);
+}
+
+function toCanvasCoords(z) {
+  return { x: z.re * scale, y: z.im * scale };
+}
+
+function drawCurve(points, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+
+  ctx.beginPath();
+  let started = false;
+  for (let pt of points) {
+    if (isFinite(pt.x) && isFinite(pt.y)) {
+      if (!started) {
+        ctx.moveTo(pt.x, pt.y);
+        started = true;
+      } else {
+        ctx.lineTo(pt.x, pt.y);
+      }
+    } else {
+      // break line on invalid point (e.g., singularities)
+      started = false;
+    }
+  }
+  ctx.stroke();
+}
+
+function drawGrid(a, b) {
+  ctx.clearRect(-W/2, -H/2, W, H);
+
+  // Vertical lines (fixed real z)
+  for (let re = -4; re <= 4; re += 0.2) {
+    let points = [];
+    for (let im = -4; im <= 4; im += 0.01) {
+      let w = f_complex({ re, im }, a, b);
+      points.push(toCanvasCoords(w));
+    }
+    drawCurve(points, 'red');
+  }
+
+  // Horizontal lines (fixed imaginary z)
+  for (let im = -4; im <= 4; im += 0.2) {
+    let points = [];
+    for (let re = -4; re <= 4; re += 0.01) {
+      let w = f_complex({ re, im }, a, b);
+      points.push(toCanvasCoords(w));
+    }
+    drawCurve(points, 'blue');
+  }
+}
+
+function parseInput() {
+  return {
+    a: { 
+      re: parseFloat(aReInput.value) || 0, 
+      im: parseFloat(aImInput.value) || 0 
+    },
+    b: {
+      re: parseFloat(bReInput.value) || 0, 
+      im: parseFloat(bImInput.value) || 0
+    }
+  };
+}
+
+// Initial draw
+drawBtn.addEventListener('click', () => {
+  const { a, b } = parseInput();
+  drawGrid(a, b);
+});
+
+// Draw initial with default values
+drawBtn.click();
+</script>
+
+</body>
+</html>
